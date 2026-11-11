@@ -1,0 +1,7 @@
+node_modules/
+build/
+*.ipa
+.DS_Store
+
+# Local Claude Code preview config (points at a machine-specific temp script)
+.claude/

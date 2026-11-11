@@ -1,0 +1,84 @@
+name: Build iOS (unsigned)
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+concurrency:
+  group: build-ios-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build-ios:
+    name: Build unsigned .ipa
+    runs-on: macos-latest
+    timeout-minutes: 30
+
+    env:
+      PROJECT: ios/App/App.xcodeproj
+      SCHEME: App
+      CONFIGURATION: Release
+      DERIVED_DATA: build/DerivedData
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install Node dependencies
+        run: npm ci
+
+      - name: Build web assets
+        run: npm run build
+
+      - name: Sync Capacitor iOS project
+        run: npx cap sync ios
+
+      - name: Show Xcode version and project schemes
+        run: |
+          xcodebuild -version
+          xcodebuild -list -project "$PROJECT"
+
+      - name: Compile app with xcodebuild (no code signing)
+        run: |
+          set -o pipefail
+          xcodebuild \
+            -project "$PROJECT" \
+            -scheme "$SCHEME" \
+            -configuration "$CONFIGURATION" \
+            -sdk iphoneos \
+            -destination "generic/platform=iOS" \
+            -derivedDataPath "$DERIVED_DATA" \
+            CODE_SIGNING_ALLOWED=NO \
+            CODE_SIGNING_REQUIRED=NO \
+            CODE_SIGN_IDENTITY="" \
+            build
+
+      - name: Package unsigned .ipa
+        run: |
+          set -euo pipefail
+          APP_PATH="$DERIVED_DATA/Build/Products/${CONFIGURATION}-iphoneos/${SCHEME}.app"
+          if [ ! -d "$APP_PATH" ]; then
+            echo "::error::Expected app bundle not found at $APP_PATH"
+            find "$DERIVED_DATA/Build/Products" -maxdepth 2 -name "*.app" || true
+            exit 1
+          fi
+          mkdir -p build/ipa/Payload
+          cp -R "$APP_PATH" build/ipa/Payload/
+          (cd build/ipa && zip -qry ../FinanceDashboard-unsigned.ipa Payload)
+          ls -lh build/FinanceDashboard-unsigned.ipa
+
+      - name: Upload .ipa artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: FinanceDashboard-unsigned-ipa
+          path: build/FinanceDashboard-unsigned.ipa
+          if-no-files-found: error
+          retention-days: 14

@@ -1,0 +1,19 @@
+{
+  "name": "personal-finance-dashboard",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Personal finance dashboard (Ledger) — vanilla HTML/CSS/JS packaged with Capacitor",
+  "scripts": {
+    "build": "node -e \"const fs=require('fs');for(const f of ['index.html','app.js','styles.css'])fs.accessSync('www/'+f);console.log('Web assets ready in www/ (plain HTML/CSS/JS, no compile step)')\"",
+    "sync": "cap sync",
+    "sync:ios": "cap sync ios",
+    "open:ios": "cap open ios"
+  },
+  "dependencies": {
+    "@capacitor/core": "^8.6.0",
+    "@capacitor/ios": "^8.6.0"
+  },
+  "devDependencies": {
+    "@capacitor/cli": "^8.6.0"
+  }
+}
